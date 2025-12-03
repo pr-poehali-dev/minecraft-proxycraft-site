@@ -6,10 +6,13 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import Icon from "@/components/ui/icon";
 import { Button } from "@/components/ui/button";
+import funcUrls from "../../backend/func2url.json";
 
 const Index = () => {
   const [copiedIP, setCopiedIP] = useState(false);
   const serverIP = "mc.proxycraft.ru";
+  const [serverStatus, setServerStatus] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
 
   const mockPlayers = [
     { name: "Steve_Pro", avatar: "S", status: "online", ping: 45 },
@@ -49,7 +52,24 @@ const Index = () => {
   };
 
   useEffect(() => {
-    const interval = setInterval(() => {
+    const fetchServerStatus = async () => {
+      try {
+        setLoading(true);
+        const response = await fetch(`${funcUrls['minecraft-status']}?ip=${serverIP}`);
+        const data = await response.json();
+        setServerStatus(data);
+      } catch (error) {
+        console.error('Error fetching server status:', error);
+        setServerStatus({ online: false, players: { online: 0, max: 0 } });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchServerStatus();
+    const statusInterval = setInterval(fetchServerStatus, 30000);
+
+    const chatInterval = setInterval(() => {
       const messages = [
         "Новая арена открыта!",
         "Кто хочет сразиться?",
@@ -66,7 +86,10 @@ const Index = () => {
       setChatMessages((prev) => [...prev.slice(-9), newMsg]);
     }, 5000);
 
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(statusInterval);
+      clearInterval(chatInterval);
+    };
   }, []);
 
   return (
@@ -95,10 +118,17 @@ const Index = () => {
             </h1>
           </div>
           <div className="flex items-center gap-2">
-            <Badge className="bg-[hsl(var(--neon-green))] text-black border-0 text-sm px-3 py-1">
-              <Icon name="Wifi" size={14} className="mr-1" />
-              {mockPlayers.length} онлайн
-            </Badge>
+            {loading ? (
+              <Badge className="bg-muted text-foreground border-0 text-sm px-3 py-1">
+                <Icon name="Loader2" size={14} className="mr-1 animate-spin" />
+                Загрузка...
+              </Badge>
+            ) : (
+              <Badge className={`${serverStatus?.online ? 'bg-[hsl(var(--neon-green))]' : 'bg-red-500'} text-black border-0 text-sm px-3 py-1`}>
+                <Icon name="Wifi" size={14} className="mr-1" />
+                {serverStatus?.players?.online || 0} онлайн
+              </Badge>
+            )}
           </div>
         </div>
       </nav>
@@ -184,8 +214,10 @@ const Index = () => {
                   <div>
                     <p className="text-sm text-muted-foreground mb-1">Статус сервера</p>
                     <div className="flex items-center gap-2">
-                      <div className="w-3 h-3 rounded-full bg-[hsl(var(--neon-green))] animate-pulse" />
-                      <span className="text-2xl font-bold text-[hsl(var(--neon-green))]">Онлайн</span>
+                      <div className={`w-3 h-3 rounded-full ${serverStatus?.online ? 'bg-[hsl(var(--neon-green))]' : 'bg-red-500'} animate-pulse`} />
+                      <span className={`text-2xl font-bold ${serverStatus?.online ? 'text-[hsl(var(--neon-green))]' : 'text-red-500'}`}>
+                        {loading ? 'Загрузка...' : serverStatus?.online ? 'Онлайн' : 'Офлайн'}
+                      </span>
                     </div>
                   </div>
                   <Icon name="CheckCircle" size={40} className="text-[hsl(var(--neon-green))]" />
@@ -197,7 +229,7 @@ const Index = () => {
                   <div>
                     <p className="text-sm text-muted-foreground mb-1">Игроков онлайн</p>
                     <span className="text-2xl font-bold text-[hsl(var(--neon-cyan))]">
-                      {mockPlayers.length} / 100
+                      {loading ? '...' : `${serverStatus?.players?.online || 0} / ${serverStatus?.players?.max || 100}`}
                     </span>
                   </div>
                   <Icon name="Users" size={40} className="text-[hsl(var(--neon-cyan))]" />
@@ -208,7 +240,9 @@ const Index = () => {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-muted-foreground mb-1">Версия</p>
-                    <span className="text-2xl font-bold text-[hsl(var(--neon-purple))]">1.20.4</span>
+                    <span className="text-2xl font-bold text-[hsl(var(--neon-purple))]">
+                      {loading ? '...' : serverStatus?.version?.name || '1.20.4'}
+                    </span>
                   </div>
                   <Icon name="Box" size={40} className="text-[hsl(var(--neon-purple))]" />
                 </div>

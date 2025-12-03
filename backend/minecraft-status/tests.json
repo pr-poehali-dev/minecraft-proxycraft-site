@@ -1,0 +1,16 @@
+{
+  "tests": [
+    {
+      "name": "Test server status endpoint",
+      "method": "GET",
+      "path": "/?ip=mc.hypixel.net",
+      "expectedStatus": 200
+    },
+    {
+      "name": "Test OPTIONS for CORS",
+      "method": "OPTIONS",
+      "path": "/",
+      "expectedStatus": 200
+    }
+  ]
+}
